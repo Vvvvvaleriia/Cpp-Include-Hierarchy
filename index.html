@@ -1,0 +1,43 @@
+<!doctype html>
+<html>
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>Ієрархія #include</title>
+		<style>
+			html,
+			body {
+				margin: 0;
+				height: 100%;
+			}
+			body {
+				display: flex;
+				flex-direction: column;
+				font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+			}
+			#scroll {
+				flex: 1;
+				overflow: auto;
+				background: #ffffff;
+			}
+			#scene {
+				display: block;
+			}
+			#status {
+				padding: 4px 8px;
+				background: #eee;
+				border-top: 1px solid #ccc;
+				font-size: 13px;
+			}
+		</style>
+	</head>
+	<body>
+		<div id="scroll">
+			<canvas id="scene" width="1" height="1"></canvas>
+		</div>
+		<div id="status">
+			Файл → Відкрити... - оберіть головний файл або папку проєкту
+		</div>
+		<script src="renderer.js"></script>
+	</body>
+</html>
