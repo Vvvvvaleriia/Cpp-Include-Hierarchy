@@ -32,22 +32,24 @@ export default class Analysis {
 		const includedPattern = /^\s*#\s*include\s*[<"]([^>"]+)[>"]/gm;
 		let match;
 		while ((match = includedPattern.exec(sourceCode)) !== null) {
-			includedNames.push(match[1]);
+			includedNames.push({
+				name: match[1],
+				directive: match[0].trim(),
+			});
 		}
 		return includedNames;
 	}
 
 	find(includedName) {
 		const fileName = includedName.split(/[\\/]/).pop();
-
 		return this.files.get(fileName.toLowerCase());
 	}
 
 	roots() {
 		const includedFiles = new Set();
 		for (const includeList of this.includes.values()) {
-			for (const includeName of includeList) {
-				const fileName = this.find(includeName);
+			for (const include of includeList) {
+				const fileName = this.find(include.name);
 				if (fileName) includedFiles.add(fileName);
 			}
 		}
@@ -57,38 +59,84 @@ export default class Analysis {
 		return rootFiles.length > 0 ? rootFiles : allFiles;
 	}
 
-	buildTree(fileName, pathSoFar = []) {
-		const node = {
-			name: fileName,
-			external: false,
-			cycle: false,
-			children: [],
-		};
+	buildGraph(rootNames = this.roots()) {
+		const nodes = new Map();
+		const edges = [];
+		const edgeKeys = new Set();
 
-		if (pathSoFar.includes(fileName)) {
-			node.cycle = true;
-			return node;
-		}
-
-		const pathForChildren = [...pathSoFar, fileName];
-
-		for (const includeName of this.includes.get(fileName)) {
-			const projectFile = this.find(includeName);
-
-			if (projectFile) {
-				node.children.push(
-					this.buildTree(projectFile, pathForChildren),
-				);
-			} else {
-				node.children.push({
-					name: includeName,
-					external: true,
-					cycle: false,
-					children: [],
+		const addNode = (key, name, external) => {
+			if (!nodes.has(key)) {
+				nodes.set(key, {
+					key,
+					name,
+					external,
+					level: -1,
+					directives: [],
 				});
 			}
+			return nodes.get(key);
+		};
+
+		const collect = (fileName) => {
+			if (nodes.has(fileName)) return;
+			const node = addNode(fileName, fileName, false);
+
+			for (const include of this.includes.get(fileName)) {
+				node.directives.push(include.directive);
+
+				const projectFile = this.find(include.name);
+				let targetKey;
+				if (projectFile) {
+					targetKey = projectFile;
+					collect(projectFile);
+				} else {
+					targetKey = "external:" + include.name.toLowerCase();
+					addNode(targetKey, include.name, true);
+				}
+
+				const edgeKey = fileName + "->" + targetKey;
+				if (!edgeKeys.has(edgeKey)) {
+					edgeKeys.add(edgeKey);
+					edges.push({ from: fileName, to: targetKey, cycle: false });
+				}
+			}
+		};
+
+		for (const rootName of rootNames) collect(rootName);
+		this.assignLevels(nodes, edges, rootNames);
+
+		return { nodes: [...nodes.values()], edges };
+	}
+
+	assignLevels(nodes, edges, rootNames) {
+		const outgoing = new Map();
+		for (const edge of edges) {
+			if (!outgoing.has(edge.from)) {
+				outgoing.set(edge.from, []);
+			}
+			outgoing.get(edge.from).push(edge);
 		}
 
-		return node;
+		const visit = (key, level, pathSet) => {
+			const node = nodes.get(key);
+			if (node.level >= level) return;
+			node.level = level;
+
+			pathSet.add(key);
+			for (const edge of outgoing.get(key) ?? []) {
+				if (pathSet.has(edge.to)) {
+					edge.cycle = true;
+					continue;
+				}
+
+				visit(edge.to, level + 1, pathSet);
+			}
+
+			pathSet.delete(key);
+		};
+
+		for (const rootName of rootNames) {
+			visit(rootName, 0, new Set());
+		}
 	}
 }
