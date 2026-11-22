@@ -36,4 +36,59 @@ export default class Analysis {
 		}
 		return includedNames;
 	}
+
+	find(includedName) {
+		const fileName = includedName.split(/[\\/]/).pop();
+
+		return this.files.get(fileName.toLowerCase());
+	}
+
+	roots() {
+		const includedFiles = new Set();
+		for (const includeList of this.includes.values()) {
+			for (const includeName of includeList) {
+				const fileName = this.find(includeName);
+				if (fileName) includedFiles.add(fileName);
+			}
+		}
+
+		const allFiles = [...this.files.values()];
+		const rootFiles = allFiles.filter((f) => !includedFiles.has(f));
+		return rootFiles.length > 0 ? rootFiles : allFiles;
+	}
+
+	buildTree(fileName, pathSoFar = []) {
+		const node = {
+			name: fileName,
+			external: false,
+			cycle: false,
+			children: [],
+		};
+
+		if (pathSoFar.includes(fileName)) {
+			node.cycle = true;
+			return node;
+		}
+
+		const pathForChildren = [...pathSoFar, fileName];
+
+		for (const includeName of this.includes.get(fileName)) {
+			const projectFile = this.find(includeName);
+
+			if (projectFile) {
+				node.children.push(
+					this.buildTree(projectFile, pathForChildren),
+				);
+			} else {
+				node.children.push({
+					name: includeName,
+					external: true,
+					cycle: false,
+					children: [],
+				});
+			}
+		}
+
+		return node;
+	}
 }
