@@ -17,5 +17,8 @@
 	"bugs": {
 		"url": "https://github.com/Vvvvvaleriia/Cpp-Include-Hierarchy/issues"
 	},
-	"homepage": "https://github.com/Vvvvvaleriia/Cpp-Include-Hierarchy#readme"
+	"homepage": "https://github.com/Vvvvvaleriia/Cpp-Include-Hierarchy#readme",
+	"devDependencies": {
+		"electron": "^45.4.1"
+	}
 }
