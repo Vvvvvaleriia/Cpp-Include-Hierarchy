@@ -1,7 +1,7 @@
-import fs from "fs";
-import path from "path";
+const fs = require("fs");
+const path = require("path");
 
-export default class Analysis {
+class Analysis {
 	constructor(folder) {
 		this.folder = folder;
 		this.files = new Map();
@@ -103,12 +103,12 @@ export default class Analysis {
 		};
 
 		for (const rootName of rootNames) collect(rootName);
-		this.assignLevels(nodes, edges, rootNames);
+		this.assignLevels(nodes, edges);
 
 		return { nodes: [...nodes.values()], edges };
 	}
 
-	assignLevels(nodes, edges, rootNames) {
+	assignLevels(nodes, edges) {
 		const outgoing = new Map();
 		for (const edge of edges) {
 			if (!outgoing.has(edge.from)) {
@@ -117,26 +117,29 @@ export default class Analysis {
 			outgoing.get(edge.from).push(edge);
 		}
 
-		const visit = (key, level, pathSet) => {
-			const node = nodes.get(key);
-			if (node.level >= level) return;
-			node.level = level;
+		const state = new Map();
 
-			pathSet.add(key);
+		const visit = (key) => {
+			const node = nodes.get(key);
+			if (state.get(key) === "done") return node.level;
+			state.set(key, "visiting");
+
+			let level = 0;
 			for (const edge of outgoing.get(key) ?? []) {
-				if (pathSet.has(edge.to)) {
+				if (state.get(edge.to) === "visiting") {
 					edge.cycle = true;
 					continue;
 				}
-
-				visit(edge.to, level + 1, pathSet);
+				level = Math.max(level, visit(edge.to) + 1);
 			}
 
-			pathSet.delete(key);
+			node.level = level;
+			state.set(key, "done");
+			return level;
 		};
 
-		for (const rootName of rootNames) {
-			visit(rootName, 0, new Set());
-		}
+		for (const key of nodes.keys()) visit(key);
 	}
 }
+
+module.exports = Analysis;

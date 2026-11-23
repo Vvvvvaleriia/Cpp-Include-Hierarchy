@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from "electron";
+const { app, BrowserWindow } = require("electron");
 
 let mainWindow;
 
@@ -7,6 +7,10 @@ function createWindow() {
 		width: 900,
 		height: 600,
 		title: "Ієрархія #include",
+		webPreferences: {
+			nodeIntegration: true,
+			contextIsolation: false,
+		},
 	});
 	mainWindow.loadFile("index.html");
 }
